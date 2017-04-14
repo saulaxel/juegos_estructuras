@@ -1,4 +1,4 @@
-snake
-torres_hannoi
+snake/snake
+torres_hannoi/torres_hannoi
 *.o
 a.out
