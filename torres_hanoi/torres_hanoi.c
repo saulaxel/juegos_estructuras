@@ -197,7 +197,7 @@ void calculos(void) {
 
 bool atajo_teclado(int torre) {
     if( torre == 0 ) {
-        return key[KEY_1] || key[KEY_W];
+        return key[KEY_1] || key[KEY_A];
     } else if( torre == 1 ) {
         return key[KEY_2] || key[KEY_S];
     } else if( torre == 2 ) {
