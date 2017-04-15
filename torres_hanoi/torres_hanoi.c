@@ -13,9 +13,10 @@ void interaccionUsuario(void);
 void calculos(void);
 void dormir(int milis);
 
-bool movimiento_valido(int torre_origen, int torre_destino);
+bool rangoTorre(int numero_torre);
+bool movimientoValido(int torre_origen, int torre_destino);
 void separarImagenDisco(int val);
-bool atajo_teclado(int torre);
+bool atajoTeclado(int torre);
 
 void liberarEspacio();
 
@@ -38,7 +39,6 @@ void jugar(void) {
         desplegarImagen();
         interaccionUsuario();
         calculos();
-        dormir(LAPSO_DORMIR);
     }
 
     liberarEspacio();
@@ -103,16 +103,6 @@ void desplegarImagen(void) {
 
         }
 
-        if( disco_tomado != -1 ) {
-            val = *((int *) aux2->data);
-            separarImagenDisco(val);
-
-            posicion_x = mouse_x - ANCHO_DISCO / 2;
-            posicion_y = mouse_y - ALTO_DISCO / 2;
-
-            draw_sprite(bmp_mapa, bmp_disco, posicion_x, posicion_y);
-
-        }
 
         if( disco_tomado == i || stack_is_empty(torre[i]) ) {
             j = j - 1;
@@ -142,6 +132,18 @@ void desplegarImagen(void) {
         draw_sprite(bmp_mapa, bmp_parte_tubo, posicion_x, posicion_y);
     }
 
+    if( disco_tomado != -1 ) {
+        printf("val\n");
+        val = *((int *) aux2->data);
+        separarImagenDisco(val);
+
+        posicion_x = mouse_x - ANCHO_DISCO / 2;
+        posicion_y = mouse_y - ALTO_DISCO / 2;
+
+        draw_sprite(bmp_mapa, bmp_disco, posicion_x, posicion_y);
+
+    }
+
     draw_sprite(bmp_mapa, bmp_mouse, mouse_x, mouse_y);
 
     blit(bmp_mapa, screen, 0, 0, 0, 0, ANCHO_PANTALLA, ALTO_PANTALLA);
@@ -156,9 +158,7 @@ void interaccionUsuario() {
     int i;
 
     for(i = 0; i < 3; i++) {
-        if( (mouse_x > 50 + (ANCHO_DISCO * 3 / 2) * i &&
-             mouse_x < 50 + (ANCHO_DISCO * 3 / 2) * (i + 1) &&
-             mouse_b == 1) || atajo_teclado(i) ) {
+        if( (rangoTorre(i) && mouse_b == 1) || atajoTeclado(i) ) {
                 if( disco_tomado == -1 && !stack_is_empty(torre[i]) ) {
                     disco_tomado = i;
                 } else if( disco_tomado != -1){
@@ -195,7 +195,44 @@ void calculos(void) {
     ganado = (torre[2]->elements == NUM_DISCOS);
 }
 
-bool atajo_teclado(int torre) {
+bool rangoTorre(int numero_torre) {
+    int ymax, ymin;
+    int xmax, xmin;
+
+    ymin = ALTO_PANTALLA - NUM_DISCOS * (ALTO_DISCO - SOBRANTE) - 120;
+    ymax = ALTO_PANTALLA - 120;
+
+#ifndef NDEBUG
+    printf("ymin %d ymax %d\n", ymin, ymax);
+#endif
+
+    if( mouse_y >= ymin && mouse_y <= ymax ) {
+
+        switch(numero_torre) {
+            case 0:
+                xmin = 50;
+                xmax = 170;
+                break;
+            case 1:
+                xmin = 260;
+                xmax = 380;
+                break;
+
+            case 2:
+                xmin = 470;
+                xmax = 590;
+                break;
+        }
+
+        if( mouse_x >= xmin && mouse_x <= xmax ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool atajoTeclado(int torre) {
     if( torre == 0 ) {
         return key[KEY_1] || key[KEY_A];
     } else if( torre == 1 ) {
@@ -219,9 +256,11 @@ void liberarEspacio() {
     free_stack(torre[1], false);
     free_stack(torre[2], false);
 }
+
 void dormir(int milis) {
     rest(milis);
 }
+
 bool salir(void) {
     return key[KEY_ESC];
 }
