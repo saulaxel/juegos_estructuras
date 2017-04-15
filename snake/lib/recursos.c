@@ -18,10 +18,10 @@ void inicializarAllegro(void) {
     set_color_depth(32);
     set_gfx_mode(GFX_AUTODETECT_WINDOWED,
             COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE, 0, 0); 
-    /*if( install_sound(DIGI_AUTODETECT, MIDI_AUTODETECT, NULL) != 0) {*/
-        /*allegro_message("Error al inicializar el sonido: %s\n", allegro_error);*/
-        /*exit(1);*/
-    /*}*/
+    if( install_sound(DIGI_AUTODETECT, MIDI_AUTODETECT, NULL) != 0) {
+        allegro_message("Error al inicializar el sonido: %s\n", allegro_error);
+        exit(1);
+    }
 
     set_volume(70, 70);
 
