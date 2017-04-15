@@ -15,6 +15,7 @@ void inicializarAllegro(void) {
 
     install_keyboard();
 
+    set_window_title("Snake game");
     set_color_depth(32);
     set_gfx_mode(GFX_AUTODETECT_WINDOWED,
             COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE, 0, 0); 

@@ -1,5 +1,5 @@
-#include "config.h"
-#include "recursos.h"
+#include "lib/config.h"
+#include "lib/recursos.h"
 
 #include <stdbool.h>
 
@@ -58,9 +58,11 @@ void prepararJuego(void) {
 void jugar(void){
     // Preambulo
     prepararJuego();
+
     desplegarImagen();
 
-    allegro_message("Snake game: presiona una tecla para comenzar");
+    textout_ex(screen, font, "Snake game: presiona una tecla para comenzar", 100, 100, 0x0, -1);
+
     readkey();
 
     while( !ganado && !perdido && !salir()) {
@@ -298,7 +300,7 @@ bool direccion_opuesta(int dir1, int dir2) {
 }
 
 void pausa(void) {
-    allegro_message("Se ha pausado el juego, presiona C para continuar");
+    textout_ex(screen, font, "Se ha pausado el juego, presiona C para continuar", 100, 100, 0x000000, -1);
     while( !key[KEY_C] );
 }
 

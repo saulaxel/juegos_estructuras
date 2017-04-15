@@ -12,6 +12,8 @@ void inicializarAllegro(void) {
     // InicializaciOn general
     allegro_init();
 
+    set_window_title("Torres de Hanoi");
+
     // Graficos
     set_color_depth(32);
     set_gfx_mode(GFX_AUTODETECT_WINDOWED, ANCHO_PANTALLA, ALTO_PANTALLA, 0, 0);
