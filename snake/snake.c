@@ -89,6 +89,8 @@ void desplegarImagen(void) {
     struct node * aux;
     Parte *actual, *ant, *sig;
     BITMAP * sprite = create_bitmap(40, 40);
+    BITMAP * sprite2 = create_bitmap(40, 40);
+    int x_lost, y_lost, angle_lost;
 
     int i, j;
     int rotate;
@@ -176,8 +178,9 @@ void desplegarImagen(void) {
         } else {
             if( perdido ) {
                 Parte * aux = filtrar(serpiente->rear);
-                blit(mapa, sprite, aux->x * TAM_BLOQUE, aux->y * TAM_BLOQUE, 0, 0, TAM_BLOQUE, TAM_BLOQUE);
-                blit(explosion, sprite, 0, 0, 0, 0, 40, 40);
+                blit(mapa, sprite2, aux->x * TAM_BLOQUE, aux->y * TAM_BLOQUE, 0, 0, TAM_BLOQUE, TAM_BLOQUE);
+                x_lost = aux->x * TAM_BLOQUE;
+                y_lost = aux->y * TAM_BLOQUE;
             }
 
             if( ant->x == actual->x - 1 )
@@ -188,10 +191,18 @@ void desplegarImagen(void) {
                 rotate = 192;
             else
                 rotate = 64;
+
+            if( perdido ) angle_lost = rotate;
             rotate_sprite(sprite, serp_cabeza, 0, 0, itofix(rotate));
         }
         draw_sprite(mapa, sprite,
                 actual->x * TAM_BLOQUE, actual->y * TAM_BLOQUE);
+    }
+
+    if( perdido ) {
+        draw_sprite(mapa, sprite2, x_lost, y_lost);
+        rotate_sprite(sprite2, explosion, 0, 0, itofix(angle_lost));
+        draw_sprite(mapa, sprite2, x_lost, y_lost);
     }
 
     blit(mapa, screen, 0, 0, 0, 0, COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE);
