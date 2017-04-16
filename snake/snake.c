@@ -1,8 +1,6 @@
 #include "lib/config.h"
 #include "lib/recursos.h"
 
-#include <stdbool.h>
-
 #define LAPSO_DORMIR 10
 #define SALIR 0
 
@@ -32,6 +30,8 @@ int main(int argc, char ** argv) {
 void prepararJuego(void) {
     // #4B0D73
     color_fondo = 0x4B << 16 | 0x9D << 8 | 0x73;
+
+    srand(time(NULL));
 
     for(int i = 0; i < COLUMNAS; i++) {
         for(int j = 0; j < FILAS; j++) {
