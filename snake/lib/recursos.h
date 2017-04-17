@@ -7,8 +7,16 @@
 #include "config.h"
 #include "allegro.h"
 
+#ifdef _WIN32
+    #include <windows.h>
+#else
+    #include <unistd.h>
+#endif
+
 typedef struct node SerpNodo;
 typedef struct queue Serp;
+
+#define MILI CLOCKS_PER_SEC / 1000
 
 /* Espacio de juego */
 #define TAM_BLOQUE 40
@@ -21,6 +29,8 @@ typedef struct {
     int y;
 } Coor;
 
+#define new_dir() new_node(malloc(sizeof(int)));
+
 /* Escenario */
 BITMAP * mapa;
 
@@ -29,9 +39,6 @@ BITMAP * serp_cabeza;
 BITMAP * serp_cuerpo;
 BITMAP * serp_cola;
 BITMAP * serp_giro;
-
-BITMAP * comida;
-BITMAP * muro;
 
 /* Otros */
 BITMAP * comida;

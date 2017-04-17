@@ -25,19 +25,19 @@ void inicializarAllegro(void) {
     }
 
     set_volume(70, 70);
-
+    install_timer();
 }
 
 void cargarImagenes(void) {
     mapa = create_bitmap(COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE);
 
-    serp_cabeza = load_bitmap("img" DIAG "snake_head.bmp", NULL);
-    serp_cuerpo = load_bitmap("img" DIAG "snake_body.bmp", NULL);
-    serp_cola   = load_bitmap("img" DIAG "snake_tail.bmp", NULL);
-    serp_giro   = load_bitmap("img" DIAG "snake_turn.bmp", NULL);
-    comida      = load_bitmap("img" DIAG "manzana.bmp", NULL);
-    muro        = load_bitmap("img" DIAG "muro.bmp", NULL);
-    explosion   = load_bitmap("img" DIAG "explosion.bmp", NULL);
+    serp_cabeza = load_bitmap("img/snake_head.bmp", NULL);
+    serp_cuerpo = load_bitmap("img/snake_body.bmp", NULL);
+    serp_cola   = load_bitmap("img/snake_tail.bmp", NULL);
+    serp_giro   = load_bitmap("img/snake_turn.bmp", NULL);
+    comida      = load_bitmap("img/manzana.bmp", NULL);
+    muro        = load_bitmap("img/muro.bmp", NULL);
+    explosion   = load_bitmap("img/explosion.bmp", NULL);
 
 }
 

@@ -1,7 +1,9 @@
 #include "lib/config.h"
 #include "lib/recursos.h"
 
-#define LAPSO_DORMIR 10
+#include <unistd.h>
+
+#define LAPSO_DORMIR 40
 #define SALIR 0
 
 char ocupado[COLUMNAS][FILAS];
@@ -9,6 +11,9 @@ char ocupado[COLUMNAS][FILAS];
 void prepararJuego(void);
 
 int color_fondo;
+
+static long contadorTiempo;
+static long contadorTtiempo;
 
 void jugar(void);
     // Se divide en :
@@ -18,10 +23,13 @@ void jugar(void);
     void dormir(int milis);
 
 bool direccion_opuesta(int dir1, int dir2);
+bool misma_direccion(int dir1, int dir2);
+bool terminoDescanso(void);
 void pausa(void);
 static inline bool salir(void);
 
 int main(int argc, char ** argv) {
+
     jugar();
 
     return 0;
@@ -53,6 +61,7 @@ void prepararJuego(void) {
     cargarAudios();
 
     activarMusicaFondo();
+
 }
 
 void jugar(void){
@@ -66,6 +75,9 @@ void jugar(void){
     readkey();
 
     // Juego
+    contadorTiempo = clock();
+    contadorTtiempo = time(NULL);
+
     while( !perdido && !salir()) {
 
         desplegarImagen();
@@ -74,10 +86,7 @@ void jugar(void){
 
         calculos();
 
-        for(int i = 0; i < 12; i++) {
-            dormir(LAPSO_DORMIR);
-            interaccionUsuario(false);
-        }
+        dormir(2); // Descanso para el cpu
     }
 
     desplegarImagen();
@@ -207,25 +216,59 @@ void desplegarImagen(void) {
 
     blit(mapa, screen, 0, 0, 0, 0, COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE);
     draw_sprite(mapa, serp_cuerpo, actual->x, actual->y);
+
+    destroy_bitmap(sprite);
+    destroy_bitmap(sprite2);
 }
 
 void interaccionUsuario(bool cambio) {
-    static int new_dir;
-    if     ( key[KEY_LEFT]  || key[KEY_A] ) new_dir = 0;
-    else if( key[KEY_RIGHT] || key[KEY_D] ) new_dir = 1;
-    else if( key[KEY_UP]    || key[KEY_W] ) new_dir = 2;
-    else if( key[KEY_DOWN]  || key[KEY_S] ) new_dir = 3;
-    else if( key[KEY_P]     ) pausa();
+    static struct queue * lista_direcciones;
+    static int presionado = -1, ultimo = -1;
 
-    if( cambio && !direccion_opuesta(new_dir, dir) )
-        dir = new_dir;
+    if( !lista_direcciones ) lista_direcciones = new_queue();
+
+    if     ( key[KEY_LEFT]  || key[KEY_A] ) presionado = 0;
+    else if( key[KEY_RIGHT] || key[KEY_D] ) presionado = 1;
+    else if( key[KEY_UP]    || key[KEY_W] ) presionado = 2;
+    else if( key[KEY_DOWN]  || key[KEY_S] ) presionado = 3;
+    else if( key[KEY_P] ) pausa();
+
+    if( !misma_direccion(presionado, ultimo)
+        && !direccion_opuesta(presionado, ultimo) ) {
+
+        int * new_dir = (int *)malloc(sizeof(int));
+        *new_dir = ultimo = presionado;
+        en_queue(lista_direcciones, new_node((void *)new_dir));
+    }
+
+    if( terminoDescanso() && !queue_is_empty(lista_direcciones) ) {
+        struct node * aux = de_queue(lista_direcciones);
+        dir = *((int *)aux->data);
+
+        free(aux->data); free(aux);
+    }
 }
 
 void calculos(void) {
+    static long tiempo;
+    static long ttiempo;
+
     SerpNodo * movil;
     char lugar;
     Coor * aux = filtrar(serpiente->rear), * aux2;
     Coor nuevaCoord = *aux;
+
+    if( terminoDescanso() ) {
+        tiempo = contadorTiempo;
+        ttiempo = contadorTtiempo;
+
+        contadorTiempo = clock();
+        contadorTtiempo = time(NULL);
+
+        printf("Tiempo: %ld %ld\n", contadorTiempo - tiempo, contadorTtiempo - ttiempo);
+    } else {
+        return;
+    }
 
     if( !hayComida ) {
         do {
@@ -291,13 +334,11 @@ void calculos(void) {
 }
 
 void dormir(int milis) {
-#ifdef __unix__
-    char cadena[100];
-    sprintf(cadena, "sleep %f", (float)milis/1000);
-    system(cadena);
-#else
     rest(milis);
-#endif
+}
+
+bool misma_direccion(int dir1, int dir2) {
+    return dir1 == dir2;
 }
 
 bool direccion_opuesta(int dir1, int dir2) {
@@ -310,9 +351,34 @@ bool direccion_opuesta(int dir1, int dir2) {
     return false;
 }
 
+bool terminoDescanso(void) {
+    return clock() >= contadorTiempo + LAPSO_DORMIR * MILI;
+}
+
 void pausa(void) {
     textout_ex(screen, font, "Se ha pausado el juego, presiona C para continuar", 100, 100, 0x000000, -1);
-    while( !key[KEY_C] );
+    while( !key[KEY_C] ) dormir(10);
 }
 
 static inline bool salir(void) { return key[KEY_ESC]; }
+
+void liberarMemoria(void) {
+    struct node * aux;
+
+    while( (aux = de_queue(serpiente)) ) {
+        free(aux);
+    }
+    free(serpiente);
+
+    destroy_bitmap(mapa);
+    destroy_bitmap(serp_cabeza);
+    destroy_bitmap(serp_cuerpo);
+    destroy_bitmap(serp_cola);
+    destroy_bitmap(serp_giro);
+    destroy_bitmap(comida);
+    destroy_bitmap(muro);
+    destroy_bitmap(explosion);
+    destroy_bitmap(screen);
+
+    release_screen();
+}
