@@ -65,19 +65,19 @@ void jugar(void){
 
     readkey();
 
-    while( !ganado && !perdido && !salir()) {
+    // Juego
+    while( !perdido && !salir()) {
 
         desplegarImagen();
 
-        interaccionUsuario(false);
+        interaccionUsuario(true);
 
         calculos();
 
-        for(int i = 0; i < 11; i++) {
+        for(int i = 0; i < 12; i++) {
             dormir(LAPSO_DORMIR);
             interaccionUsuario(false);
         }
-        interaccionUsuario(true);
     }
 
     desplegarImagen();
@@ -86,8 +86,8 @@ void jugar(void){
 }
 
 void desplegarImagen(void) {
-    struct node * aux;
-    Parte *actual, *ant, *sig;
+    SerpNodo * aux;
+    Coor *actual, *ant, *sig;
     BITMAP * sprite = create_bitmap(40, 40);
     BITMAP * sprite2 = create_bitmap(40, 40);
     int x_lost, y_lost, angle_lost;
@@ -177,7 +177,7 @@ void desplegarImagen(void) {
             }
         } else {
             if( perdido ) {
-                Parte * aux = filtrar(serpiente->rear);
+                Coor * aux = filtrar(serpiente->rear);
                 blit(mapa, sprite2, aux->x * TAM_BLOQUE, aux->y * TAM_BLOQUE, 0, 0, TAM_BLOQUE, TAM_BLOQUE);
                 x_lost = aux->x * TAM_BLOQUE;
                 y_lost = aux->y * TAM_BLOQUE;
@@ -222,10 +222,10 @@ void interaccionUsuario(bool cambio) {
 }
 
 void calculos(void) {
-    struct node * movil;
+    SerpNodo * movil;
     char lugar;
-    Parte * aux = filtrar(serpiente->rear), * aux2;
-    Parte nuevaCoord = *aux;
+    Coor * aux = filtrar(serpiente->rear), * aux2;
+    Coor nuevaCoord = *aux;
 
     if( !hayComida ) {
         do {
@@ -275,7 +275,7 @@ void calculos(void) {
 #ifndef NDEBUG
         printf("He comido\n");
 #endif
-        movil = new_node(malloc(sizeof(Parte)));
+        movil = new_node(malloc(sizeof(Coor)));
     } else {
 #ifndef NDEBUG
         printf("He movido\n");

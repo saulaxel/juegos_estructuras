@@ -3,11 +3,11 @@
 
 int dir = 1;
 char ocupado[COLUMNAS][FILAS] = {};
-struct queue * serpiente;
+Serp * serpiente;
 
-bool ganado = false, perdido = false;
+bool perdido = false;
 bool hayComida = false;
-Parte coordenadaComida = { -1, -1 };
+Coor coordenadaComida = { -1, -1 };
 
 void inicializarAllegro(void) {
 
@@ -50,11 +50,11 @@ void activarMusicaFondo(void) {
 }
 
 void crearSerpiente() {
-    Parte * aux;
+    Coor * aux;
 
     serpiente = new_queue();
 
-    aux = (Parte *) malloc(3 * sizeof(Parte));
+    aux = (Coor *) malloc(3 * sizeof(Coor));
 
     aux[0].x = 1; aux[0].y = 1;
     aux[1].x = 2; aux[1].y = 1;
@@ -70,8 +70,8 @@ void crearSerpiente() {
     /*insertar(new_node(&aux[4]));*/
 }
 
-bool insertar(struct node * n) {
-    Parte * aux = ((Parte *)n->data);
+bool insertar(SerpNodo * n) {
+    Coor * aux = ((Coor *)n->data);
 
 #ifndef NDEBUG
     printf("Ingreso %d %d\n", aux->x, aux->y);
@@ -81,25 +81,25 @@ bool insertar(struct node * n) {
     return en_queue(serpiente, n);
 }
 
-struct node * sacar(void) {
-    struct node * aux = de_queue(serpiente);
+SerpNodo * sacar(void) {
+    SerpNodo * aux = de_queue(serpiente);
 
     if( aux ) {
-        Parte * p = ((Parte *)aux->data);
+        Coor * p = ((Coor *)aux->data);
         ocupado[p->x][p->y] = '\0';
     }
 
     return aux;
 }
 
-struct node * peek(bool reiniciar) {
+SerpNodo * peek(bool reiniciar) {
     return queue_peek(serpiente, reiniciar);
 }
 
-Parte * filtrar(struct node * n) {
-    return ((Parte *) n->data);
+Coor * filtrar(SerpNodo * n) {
+    return ((Coor *) n->data);
 }
 
-struct node * nuevoNodo(Parte * p) {
+SerpNodo * nuevoNodo(Coor * p) {
     return new_node((void *)p);
 }

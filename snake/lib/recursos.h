@@ -1,9 +1,14 @@
 #ifndef _RECURSOS_H
 #define _RECURSOS_H
 
+#include <stdio.h>
+//#include <time.h>
 #include "dinamic_queue.h"
 #include "config.h"
 #include "allegro.h"
+
+typedef struct node SerpNodo;
+typedef struct queue Serp;
 
 /* Espacio de juego */
 #define TAM_BLOQUE 40
@@ -14,7 +19,7 @@
 typedef struct {
     int x;
     int y;
-}Parte;
+} Coor;
 
 /* Escenario */
 BITMAP * mapa;
@@ -35,13 +40,13 @@ BITMAP * explosion;
 
 /* Estado del juego */
 
-extern bool ganado, perdido;
+extern bool perdido;
 
 extern int dir;
 extern char ocupado[COLUMNAS][FILAS];
-extern struct queue * serpiente;
+extern Serp * serpiente;
 extern bool hayComida;
-extern Parte coordenadaComida;
+extern Coor coordenadaComida;
 
 void inicializarAllegro(void);
 
@@ -51,10 +56,10 @@ void cargarAudios(void);
 void activarMusicaFondo(void);
 
 void crearSerpiente(void);
-bool insertar(struct node * n);
-struct node * nuevoNodo(Parte * p);
-struct node * sacar(void);
-struct node * peek(bool reiniciar);
-Parte * filtrar(struct node * n);
+bool insertar(SerpNodo * n);
+SerpNodo * nuevoNodo(Coor * p);
+SerpNodo * sacar(void);
+SerpNodo * peek(bool reiniciar);
+Coor * filtrar(SerpNodo * n);
 
 #endif /* _RECURSOS_H */

@@ -1,4 +1,5 @@
 snake/snake
 torres_hanoi/torres_hanoi
 *.o
+*.ghz
 a.out
