@@ -225,6 +225,7 @@ bool rangoTorre(int numero_torre) {
         }
 
         if( mouse_x >= xmin && mouse_x <= xmax ) {
+            rest(100);
             return true;
         }
     }
