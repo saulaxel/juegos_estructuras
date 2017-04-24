@@ -16,7 +16,7 @@
 #define ANCHO_DISCO 120
 #define SOBRANTE    10
 
-#define NUM_DISCOS  5
+#define NUM_DISCOS  4
 
 #define ALTO_TUBO  30
 #define ANCHO_TUBO 10

@@ -3,7 +3,7 @@
 
 #include <unistd.h>
 
-#define LAPSO_DORMIR 40
+#define LAPSO_DORMIR 100
 #define SALIR 0
 
 char ocupado[COLUMNAS][FILAS];
@@ -13,7 +13,6 @@ void prepararJuego(void);
 int color_fondo;
 
 static long contadorTiempo;
-static long contadorTtiempo;
 
 void jugar(void);
     // Se divide en :
@@ -76,7 +75,6 @@ void jugar(void){
 
     // Juego
     contadorTiempo = clock();
-    contadorTtiempo = time(NULL);
 
     while( !perdido && !salir()) {
 
@@ -223,7 +221,7 @@ void desplegarImagen(void) {
 
 void interaccionUsuario(bool cambio) {
     static struct queue * lista_direcciones;
-    static int presionado = -1, ultimo = -1;
+    static int presionado = -1, ultimo = 1;
 
     if( !lista_direcciones ) lista_direcciones = new_queue();
 
@@ -250,8 +248,6 @@ void interaccionUsuario(bool cambio) {
 }
 
 void calculos(void) {
-    static long tiempo;
-    static long ttiempo;
 
     SerpNodo * movil;
     char lugar;
@@ -259,13 +255,9 @@ void calculos(void) {
     Coor nuevaCoord = *aux;
 
     if( terminoDescanso() ) {
-        tiempo = contadorTiempo;
-        ttiempo = contadorTtiempo;
 
         contadorTiempo = clock();
-        contadorTtiempo = time(NULL);
 
-        printf("Tiempo: %ld %ld\n", contadorTiempo - tiempo, contadorTtiempo - ttiempo);
     } else {
         return;
     }

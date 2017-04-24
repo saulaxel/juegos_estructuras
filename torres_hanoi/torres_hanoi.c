@@ -41,6 +41,12 @@ void jugar(void) {
         calculos();
     }
 
+
+    while(!salir()) {
+        desplegarImagen();
+        textout_ex(screen, font, "Congratulashion: has ganado (ESC para salIr)", 100, 100, 0x0, -1);
+    }
+
     liberarEspacio();
 }
 void prepararJuego() {
@@ -133,7 +139,6 @@ void desplegarImagen(void) {
     }
 
     if( disco_tomado != -1 ) {
-        printf("val\n");
         val = *((int *) aux2->data);
         separarImagenDisco(val);
 
@@ -183,7 +188,9 @@ void calculos(void) {
             val_destino = NUM_DISCOS;
         }
 
+#ifndef NDEBUG
         printf("val_origen %d, val_destino %d\n", val_origen, val_destino);
+#endif
 
         if( val_origen <= val_destino ) {
             push(torre[disco_dejado], pop(torre[disco_tomado]));
@@ -263,5 +270,6 @@ void dormir(int milis) {
 }
 
 bool salir(void) {
+    rest(2);
     return key[KEY_ESC];
 }
