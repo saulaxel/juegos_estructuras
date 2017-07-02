@@ -10,22 +10,35 @@ bool hayComida = false;
 Coor coordenadaComida = { -1, -1 };
 
 void inicializarAllegro(void) {
+    bool exito = true;
 
-    allegro_init();
+    if(allegro_init() != 0) {
+        exito = false;
+        fprintf(stderr, "Fallo al inicializar allegro\n");
+    }
 
-    install_keyboard();
+    if(install_keyboard() != 0) {
+        exito = false;
+        fprintf(stderr, "Fallo al inicializar el teclado\n");
+    }
 
     set_window_title("Snake game");
     set_color_depth(32);
+
     set_gfx_mode(GFX_AUTODETECT_WINDOWED,
             COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE, 0, 0); 
+
     if( install_sound(DIGI_AUTODETECT, MIDI_AUTODETECT, NULL) != 0) {
         allegro_message("Error al inicializar el sonido: %s\n", allegro_error);
-        exit(1);
+        exito = false;
     }
 
     set_volume(70, 70);
     install_timer();
+
+    if( !exito ) {
+        exit(EXIT_FAILURE);
+    }
 }
 
 void cargarImagenes(void) {
@@ -42,7 +55,9 @@ void cargarImagenes(void) {
 }
 
 void cargarAudios(void) {
-
+    muerte = load_wav("sound/muerte.wav");
+    mordida = load_wav("sound/croc_chomp_x.wav");
+    movimiento = load_wav("sound/rattlesnake3.wav");
 }
 
 void activarMusicaFondo(void) {
@@ -59,15 +74,11 @@ void crearSerpiente() {
     aux[0].x = 1; aux[0].y = 1;
     aux[1].x = 2; aux[1].y = 1;
     aux[2].x = 3; aux[2].y = 1;
-    /*aux[3].x = 3; aux[3].y = 2;*/
-    /*aux[4].x = 3; aux[4].y = 3;*/
 
 
     insertar(new_node(&aux[0]));
     insertar(new_node(&aux[1]));
     insertar(new_node(&aux[2]));
-    /*insertar(new_node(&aux[3]));*/
-    /*insertar(new_node(&aux[4]));*/
 }
 
 bool insertar(SerpNodo * n) {

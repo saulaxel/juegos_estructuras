@@ -3,7 +3,7 @@
 
 #include <unistd.h>
 
-#define LAPSO_DORMIR 100
+#define LAPSO_DORMIR 40
 #define SALIR 0
 
 char ocupado[COLUMNAS][FILAS];
@@ -21,8 +21,8 @@ void jugar(void);
     void calculos(void);
     void dormir(int milis);
 
-bool direccion_opuesta(int dir1, int dir2);
-bool misma_direccion(int dir1, int dir2);
+bool direccion_opuesta(int32_t dir1, int32_t dir2);
+bool misma_direccion(int32_t dir1, int32_t dir2);
 bool terminoDescanso(void);
 void pausa(void);
 static inline bool salir(void);
@@ -66,6 +66,7 @@ void prepararJuego(void) {
 void jugar(void){
     // Preambulo
     prepararJuego();
+    cargarAudios();
 
     desplegarImagen();
 
@@ -88,6 +89,7 @@ void jugar(void){
     }
 
     desplegarImagen();
+    play_sample(muerte, 1000, 500, 1000, 0);
     dormir(500);
 
 }
@@ -97,10 +99,10 @@ void desplegarImagen(void) {
     Coor *actual, *ant, *sig;
     BITMAP * sprite = create_bitmap(40, 40);
     BITMAP * sprite2 = create_bitmap(40, 40);
-    int x_lost, y_lost, angle_lost;
+    int32_t x_lost, y_lost, angle_lost;
 
-    int i, j;
-    int rotate;
+    int32_t i, j;
+    int32_t rotate;
     clear_to_color(mapa, color_fondo);
     clear_to_color(sprite, color_fondo);
 
@@ -221,7 +223,7 @@ void desplegarImagen(void) {
 
 void interaccionUsuario(bool cambio) {
     static struct queue * lista_direcciones;
-    static int presionado = -1, ultimo = 1;
+    static int32_t presionado = 1, ultimo = 1;
 
     if( !lista_direcciones ) lista_direcciones = new_queue();
 
@@ -233,17 +235,14 @@ void interaccionUsuario(bool cambio) {
 
     if( !misma_direccion(presionado, ultimo)
         && !direccion_opuesta(presionado, ultimo) ) {
+        int32_t direction = ultimo = presionado;
 
-        int * new_dir = (int *)malloc(sizeof(int));
-        *new_dir = ultimo = presionado;
-        en_queue(lista_direcciones, new_node((void *)new_dir));
+        en_queue(lista_direcciones, new_dir(direction));
     }
 
     if( terminoDescanso() && !queue_is_empty(lista_direcciones) ) {
         struct node * aux = de_queue(lista_direcciones);
-        dir = *((int *)aux->data);
-
-        free(aux->data); free(aux);
+        dir = ptr_to_int(aux->data);
     }
 }
 
@@ -255,12 +254,15 @@ void calculos(void) {
     Coor nuevaCoord = *aux;
 
     if( terminoDescanso() ) {
-
         contadorTiempo = clock();
-
     } else {
         return;
     }
+
+    if( rand() % 10 == 0 ) {
+        play_sample(movimiento, 1000, 150, 1000, 0);
+    }
+
 
     if( !hayComida ) {
         do {
@@ -311,6 +313,7 @@ void calculos(void) {
         printf("He comido\n");
 #endif
         movil = new_node(malloc(sizeof(Coor)));
+        play_sample(mordida, 50, 250, 1000, 0);
     } else {
 #ifndef NDEBUG
         printf("He movido\n");
@@ -329,11 +332,11 @@ void dormir(int milis) {
     rest(milis);
 }
 
-bool misma_direccion(int dir1, int dir2) {
+bool misma_direccion(int32_t dir1, int32_t dir2) {
     return dir1 == dir2;
 }
 
-bool direccion_opuesta(int dir1, int dir2) {
+bool direccion_opuesta(int32_t dir1, int32_t dir2) {
     int8_t opuesta[4] = { 1, 0, 3, 2 };
 
     if( dir1 >= 0 && dir1 < 4 ) {

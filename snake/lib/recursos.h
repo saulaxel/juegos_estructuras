@@ -2,7 +2,7 @@
 #define _RECURSOS_H
 
 #include <stdio.h>
-//#include <time.h>
+#include <stdlib.h>
 #include "dinamic_queue.h"
 #include "config.h"
 #include "allegro.h"
@@ -11,6 +11,14 @@
     #include <windows.h>
 #else
     #include <unistd.h>
+#endif
+
+#if INTPTR_MAX == INT32_MAX
+    #define int_to_ptr(i) (void *)(int32_t)(i + 1)
+    #define ptr_to_int(i) (int32_t)(i - 1)
+#else
+    #define int_to_ptr(i) (void *)(int64_t)(i + 1)
+    #define ptr_to_int(i) (int32_t)(int64_t)(i - 1)
 #endif
 
 typedef struct node SerpNodo;
@@ -29,7 +37,7 @@ typedef struct {
     int y;
 } Coor;
 
-#define new_dir() new_node(malloc(sizeof(int)));
+#define new_dir(d) new_node(int_to_ptr(d))
 
 /* Escenario */
 BITMAP * mapa;
@@ -40,10 +48,15 @@ BITMAP * serp_cuerpo;
 BITMAP * serp_cola;
 BITMAP * serp_giro;
 
-/* Otros */
+/* Otras imagenes */
 BITMAP * comida;
 BITMAP * muro;
 BITMAP * explosion;
+
+/* Somidos */
+SAMPLE * muerte;
+SAMPLE * mordida;
+SAMPLE * movimiento;
 
 /* Estado del juego */
 
