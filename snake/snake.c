@@ -1,22 +1,14 @@
 #include "lib/config.h"
 #include "lib/recursos.h"
 
-#include <unistd.h>
-
-#define LAPSO_DORMIR 40
-#define SALIR 0
-
-#define IZQUIERDA 0
-#define DERECHA   1
-#define ARRIBA    2
-#define ABAJO     4
+enum direccion { IZQUIERDA, DERECHA, ARRIBA, ABAJO };
 
 struct coordenada {
     int16_t x;
     int16_t y;
 };
 
-struct mapaJuego {
+struct {
     // Variables para lo lOgica
     int16_t alto;
     int16_t ancho;
@@ -28,9 +20,9 @@ struct mapaJuego {
     BITMAP * imagen;
     BITMAP * img_muro;
     int32_t color_fondo;
-};
+} MapaJuego;
 
-struct serpiente {
+struct {
     // El cuerpo estarA formado por una cola de coordenadas
     struct queue cuerpo;
 
@@ -43,9 +35,9 @@ struct serpiente {
     BITMAP * img_cola;
     BITMAP * img_giro;
     BITMAP * img_choque;
-};
+} Serpiente;
 
-struct comida {
+struct {
     // Booleanod para saber si hay comida en el mapa o hay que generarla
     // (a fin de cuentas solo aparece una a la vez)
     bool existe;
@@ -55,22 +47,15 @@ struct comida {
 
     // Imagen comida
     BITMAP * imagen;
-};
+} Comida;
 
-struct juego {
-    struct mapaJuego mapa;
-    struct serpiente snake;
-    struct comida    comida;
+// Cuenta el nUmero de ciclos de juego que se han
+// ejecutado desde el inicio
+uint_fast32_t contador_repeticiones;
 
-    // Cuenta el nUmero de veces que se ha repetido el ciclo de juego
-    // desde su inicio
-    uint_fast32_t contador_repeticiones;
+uint32_t puntuacion;
 
-    uint32_t puntuacion;
-
-    // El juego sigue en pie o se ha perdido
-    bool perdido;
-};
+bool perdido;
 
 void cargarRecursos(struct juego * j);
 
@@ -428,10 +413,6 @@ bool direccion_opuesta(int32_t dir1, int32_t dir2) {
     }
 
     return false;
-}
-
-bool terminoDescanso(void) {
-    return clock() >= contadorTiempo + LAPSO_DORMIR * MILI;
 }
 
 void pausa(void) {

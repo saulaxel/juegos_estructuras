@@ -3,9 +3,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "dinamic_queue.h"
 #include "config.h"
-#include "allegro.h"
+#include "init_allegro.h"
 
 #ifdef _WIN32
     #include <windows.h>

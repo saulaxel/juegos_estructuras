@@ -1,38 +1,15 @@
 #include "config.h"
 #include "recursos.h"
+#include "init_allegro.h"
 
-bool perdido = false;
+#define FILAS       15
+#define COLUMNAS    15
+
 
 void inicializarAllegro(void) {
-    bool exito = true;
-
-    if(allegro_init() != 0) {
-        exito = false;
-        fprintf(stderr, "Fallo al inicializar allegro\n");
-    }
-
-    if(install_keyboard() != 0) {
-        exito = false;
-        fprintf(stderr, "Fallo al inicializar el teclado\n");
-    }
-
-    set_window_title("Snake game");
-    set_color_depth(32);
-
-    set_gfx_mode(GFX_AUTODETECT_WINDOWED,
-            COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE, 0, 0); 
-
-    if( install_sound(DIGI_AUTODETECT, MIDI_AUTODETECT, NULL) != 0) {
-        allegro_message("Error al inicializar el sonido: %s\n", allegro_error);
-        exito = false;
-    }
-
-    set_volume(70, 70);
-    install_timer();
-
-    if( !exito ) {
-        exit(EXIT_FAILURE);
-    }
+    init_allegro("Snake game",
+            COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE,
+            70, 70);
 }
 
 void cargarImagenes(void) {
