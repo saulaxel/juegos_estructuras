@@ -3,6 +3,9 @@
 
 #include <unistd.h>
 
+#define LAPSO_DORMIR 40
+#define SALIR 0
+
 #define IZQUIERDA 0
 #define DERECHA   1
 #define ARRIBA    2
@@ -69,10 +72,17 @@ struct juego {
     bool perdido;
 };
 
-void prepararJuego(struct juego * j);
 void cargarRecursos(struct juego * j);
 
-void jugar(struct juego * j);
+
+char ocupado[COLUMNAS][FILAS];
+
+
+int color_fondo;
+
+static long contadorTiempo;
+
+void jugar(void);
     // Se divide en :
     void desplegarImagen(struct juego * j);
     void interaccionUsuario(struct juego * j);
@@ -80,6 +90,9 @@ void jugar(struct juego * j);
 
 bool direccion_opuesta(int dir1, int dir2);
 bool misma_direccion(int dir1, int dir2);
+bool direccion_opuesta(int32_t dir1, int32_t dir2);
+bool misma_direccion(int32_t dir1, int32_t dir2);
+bool terminoDescanso(void);
 void pausa(void);
 static inline bool salir(void);
 
@@ -136,7 +149,8 @@ void prepararJuego(struct juego * j) {
 
 void jugar(struct juego * j){
     // Preambulo
-    prepararJuego(j);
+    prepararJuego();
+    cargarAudios();
 
     desplegarImagen(j);
 
@@ -156,8 +170,9 @@ void jugar(struct juego * j){
         rest(10); // Descanso para el cpu
     }
 
-    desplegarImagen(j);
-    rest(500);
+    desplegarImagen();
+    play_sample(muerte, 1000, 500, 1000, 0);
+    dormir(500);
 
 }
 
@@ -172,7 +187,11 @@ void desplegarImagen(struct juego * j) {
     clear_to_color(j->mapa.imagen, j->mapa.color_fondo);
     clear_to_color(sprite, j->mapa.color_fondo);
 
-    // TODO
+    int32_t i, j;
+    int32_t rotate;
+    clear_to_color(mapa, color_fondo);
+    clear_to_color(sprite, color_fondo);
+
     for(y = 0; y < j->mapa.ancho; ++y) {
         draw_sprite(mapa, muro, y * TAM_BLOQUE, 0);
         draw_sprite(mapa, muro, y * TAM_BLOQUE, (FILAS - 1) * TAM_BLOQUE);
@@ -198,8 +217,6 @@ void desplegarImagen(struct juego * j) {
 
         if( actual->x == sig->x + 1 )
             rotate = 0;
-        else if( actual->x == sig->x - 1 )
-            rotate = 128;
         else if( actual->y == sig->y + 1 )
             rotate = 64;
         else
@@ -290,7 +307,7 @@ void desplegarImagen(struct juego * j) {
 
 void interaccionUsuario(bool cambio) {
     static struct queue * lista_direcciones;
-    static int presionado = -1, ultimo = 1;
+    static int32_t presionado = 1, ultimo = 1;
 
     if( !lista_direcciones ) lista_direcciones = new_queue();
 
@@ -302,17 +319,14 @@ void interaccionUsuario(bool cambio) {
 
     if( !misma_direccion(presionado, ultimo)
         && !direccion_opuesta(presionado, ultimo) ) {
+        int32_t direction = ultimo = presionado;
 
-        int * new_dir = (int *)malloc(sizeof(int));
-        *new_dir = ultimo = presionado;
-        en_queue(lista_direcciones, new_node((void *)new_dir));
+        en_queue(lista_direcciones, new_dir(direction));
     }
 
     if( terminoDescanso() && !queue_is_empty(lista_direcciones) ) {
         struct node * aux = de_queue(lista_direcciones);
-        dir = *((int *)aux->data);
-
-        free(aux->data); free(aux);
+        dir = ptr_to_int(aux->data);
     }
 }
 
@@ -324,12 +338,15 @@ void calculos(void) {
     Coor nuevaCoord = *aux;
 
     if( terminoDescanso() ) {
-
         contadorTiempo = clock();
-
     } else {
         return;
     }
+
+    if( rand() % 10 == 0 ) {
+        play_sample(movimiento, 1000, 150, 1000, 0);
+    }
+
 
     if( !hayComida ) {
         do {
@@ -380,6 +397,7 @@ void calculos(void) {
         printf("He comido\n");
 #endif
         movil = new_node(malloc(sizeof(Coor)));
+        play_sample(mordida, 50, 250, 1000, 0);
     } else {
 #ifndef NDEBUG
         printf("He movido\n");
@@ -398,11 +416,11 @@ void dormir(int milis) {
     rest(milis);
 }
 
-bool misma_direccion(int dir1, int dir2) {
+bool misma_direccion(int32_t dir1, int32_t dir2) {
     return dir1 == dir2;
 }
 
-bool direccion_opuesta(int dir1, int dir2) {
+bool direccion_opuesta(int32_t dir1, int32_t dir2) {
     int8_t opuesta[4] = { 1, 0, 3, 2 };
 
     if( dir1 >= 0 && dir1 < 4 ) {
