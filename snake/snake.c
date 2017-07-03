@@ -3,47 +3,119 @@
 
 #include <unistd.h>
 
-#define LAPSO_DORMIR 100
-#define SALIR 0
+#define IZQUIERDA 0
+#define DERECHA   1
+#define ARRIBA    2
+#define ABAJO     4
 
-char ocupado[COLUMNAS][FILAS];
+struct coordenada {
+    int16_t x;
+    int16_t y;
+};
 
-void prepararJuego(void);
+struct mapaJuego {
+    // Variables para lo lOgica
+    int16_t alto;
+    int16_t ancho;
+    int_fast16_t tamanio_bloque;
 
-int color_fondo;
+    char ** ocupado;
 
-static long contadorTiempo;
+    // Variables para lo grAfico
+    BITMAP * imagen;
+    BITMAP * img_muro;
+    int32_t color_fondo;
+};
 
-void jugar(void);
+struct serpiente {
+    // El cuerpo estarA formado por una cola de coordenadas
+    struct queue cuerpo;
+
+    // La direcciOn es un entero 0 - 3
+    int8_t direccion;
+
+    // Imagenes partes serpiete
+    BITMAP * img_cabeza;
+    BITMAP * img_cuerpo;
+    BITMAP * img_cola;
+    BITMAP * img_giro;
+    BITMAP * img_choque;
+};
+
+struct comida {
+    // Booleanod para saber si hay comida en el mapa o hay que generarla
+    // (a fin de cuentas solo aparece una a la vez)
+    bool existe;
+
+    // PosiciOn en que dibujar la comida
+    struct coordenada posicion;
+
+    // Imagen comida
+    BITMAP * imagen;
+};
+
+struct juego {
+    struct mapaJuego mapa;
+    struct serpiente snake;
+    struct comida    comida;
+
+    // Cuenta el nUmero de veces que se ha repetido el ciclo de juego
+    // desde su inicio
+    uint_fast32_t contador_repeticiones;
+
+    uint32_t puntuacion;
+
+    // El juego sigue en pie o se ha perdido
+    bool perdido;
+};
+
+void prepararJuego(struct juego * j);
+void cargarRecursos(struct juego * j);
+
+void jugar(struct juego * j);
     // Se divide en :
-    void desplegarImagen(void);
-    void interaccionUsuario(bool cambio);
-    void calculos(void);
-    void dormir(int milis);
+    void desplegarImagen(struct juego * j);
+    void interaccionUsuario(struct juego * j);
+    void calculos(struct juego * j);
 
 bool direccion_opuesta(int dir1, int dir2);
 bool misma_direccion(int dir1, int dir2);
-bool terminoDescanso(void);
 void pausa(void);
 static inline bool salir(void);
 
 int main(int argc, char ** argv) {
 
-    jugar();
+    jugar(malloc(sizeof(struct juego)));
 
     return 0;
 }
 
-void prepararJuego(void) {
-    // #4B0D73
-    color_fondo = 0x4B << 16 | 0x9D << 8 | 0x73;
+void cargarRecursos(struct juego * j) {
+    // Imagenes
+    j->mapa.imagen = create_bitmap(COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE);
 
+    j->snake.img_cabeza = load_bitmap("img/snake_head.bmp", NULL);
+    j->snake.img_cuerpo = load_bitmap("img/snake_body.bmp", NULL);
+    j->snake.img_cola   = load_bitmap("img/snake_tail.bmp", NULL);
+    j->snake.img_giro   = load_bitmap("img/snake_turn.bmp", NULL);
+    j->snake.img_choque = load_bitmap("img/explosion.bmp", NULL);
+
+    j->comida.imagen  = load_bitmap("img/manzana.bmp", NULL);
+    j->mapa.img_muro  = load_bitmap("img/muro.bmp", NULL);
+    // Audios
+}
+
+
+void prepararJuego(struct juego * j) {
     srand(time(NULL));
 
-    for(int i = 0; i < COLUMNAS; i++) {
-        for(int j = 0; j < FILAS; j++) {
-            ocupado[i][j] = !(i % (COLUMNAS-1) && j % (FILAS-1)) ?
-                    'X' : '\0';
+    j->mapa.color_fondo = 0x4B0D73;
+
+    for(int x = 0; x < j->mapa.ancho; x++) {
+        for(int y = 0; y < j->mapa.alto; y++) {
+            j->mapa.ocupado[x][y] = (x % (j->mapa.ancho-1)
+                    && y % (j->mapa.alto-1)) ?
+                    '\0' : 'X';
 #ifndef NDEBUG
             putchar(ocupado[i][j]? ocupado[i][j] : ' ');
 #endif
@@ -56,60 +128,57 @@ void prepararJuego(void) {
     crearSerpiente();
 
     inicializarAllegro();
-    cargarImagenes();
-    cargarAudios();
+    cargarRecursos(j);
 
     activarMusicaFondo();
 
 }
 
-void jugar(void){
+void jugar(struct juego * j){
     // Preambulo
-    prepararJuego();
+    prepararJuego(j);
 
-    desplegarImagen();
+    desplegarImagen(j);
 
     textout_ex(screen, font, "Snake game: presiona una tecla para comenzar", 100, 100, 0x0, -1);
 
     readkey();
 
     // Juego
-    contadorTiempo = clock();
+    while( !j->perdido && !salir) {
 
-    while( !perdido && !salir()) {
+        desplegarImagen(j);
 
-        desplegarImagen();
+        interaccionUsuario(j);
 
-        interaccionUsuario(true);
+        calculos(j);
 
-        calculos();
-
-        dormir(2); // Descanso para el cpu
+        rest(10); // Descanso para el cpu
     }
 
-    desplegarImagen();
-    dormir(500);
+    desplegarImagen(j);
+    rest(500);
 
 }
 
-void desplegarImagen(void) {
-    SerpNodo * aux;
-    Coor *actual, *ant, *sig;
+void desplegarImagen(struct juego * j) {
+    struct nodo * aux;
+    struct coordenada *actual, *ant, *sig;
     BITMAP * sprite = create_bitmap(40, 40);
     BITMAP * sprite2 = create_bitmap(40, 40);
-    int x_lost, y_lost, angle_lost;
 
-    int i, j;
+    int x, y;
     int rotate;
-    clear_to_color(mapa, color_fondo);
-    clear_to_color(sprite, color_fondo);
+    clear_to_color(j->mapa.imagen, j->mapa.color_fondo);
+    clear_to_color(sprite, j->mapa.color_fondo);
 
-    for(j = 0; j < COLUMNAS; ++j) {
-        draw_sprite(mapa, muro, j * TAM_BLOQUE, 0);
-        draw_sprite(mapa, muro, j * TAM_BLOQUE, (FILAS - 1) * TAM_BLOQUE);
+    // TODO
+    for(y = 0; y < j->mapa.ancho; ++y) {
+        draw_sprite(mapa, muro, y * TAM_BLOQUE, 0);
+        draw_sprite(mapa, muro, y * TAM_BLOQUE, (FILAS - 1) * TAM_BLOQUE);
     }
 
-    for(i = 1; i < FILAS - 1; ++i) {
+    for(i = 1; i < j->mapa.alto - 1; ++i) {
         draw_sprite(mapa, muro, 0, i * TAM_BLOQUE);
         draw_sprite(mapa, muro, (COLUMNAS - 1) * TAM_BLOQUE, i * TAM_BLOQUE);
     }

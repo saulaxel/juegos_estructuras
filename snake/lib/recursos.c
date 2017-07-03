@@ -1,13 +1,7 @@
 #include "config.h"
 #include "recursos.h"
 
-int dir = 1;
-char ocupado[COLUMNAS][FILAS] = {};
-Serp * serpiente;
-
 bool perdido = false;
-bool hayComida = false;
-Coor coordenadaComida = { -1, -1 };
 
 void inicializarAllegro(void) {
 
