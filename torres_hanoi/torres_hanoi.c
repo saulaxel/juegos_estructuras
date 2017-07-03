@@ -43,12 +43,14 @@ void jugar(void) {
 
 
     while(!salir()) {
-        desplegarImagen();
         textout_ex(screen, font, "Congratulashion: has ganado (ESC para salIr)", 100, 100, 0x0, -1);
+        rest(20);
+        draw_sprite(screen, bmp_mouse, mouse_x, mouse_y);
     }
 
     liberarEspacio();
 }
+
 void prepararJuego() {
     int i;
     torre[0] = new_stack(); torre[1] = new_stack(); torre[2] = new_stack();
