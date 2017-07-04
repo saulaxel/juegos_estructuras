@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "init_allegro.h"
 
 void init_allegro(const char * titulo,
         int ancho, int alto,

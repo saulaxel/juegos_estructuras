@@ -1,404 +1,334 @@
 #include "lib/config.h"
 #include "lib/recursos.h"
 
-enum direccion { IZQUIERDA, DERECHA, ARRIBA, ABAJO };
-
-struct coordenada {
-    int16_t x;
-    int16_t y;
-};
-
-struct {
-    // Variables para lo lOgica
-    int16_t alto;
-    int16_t ancho;
-    int_fast16_t tamanio_bloque;
-
-    char ** ocupado;
-
-    // Variables para lo grAfico
-    BITMAP * imagen;
-    BITMAP * img_muro;
-    int32_t color_fondo;
-} MapaJuego;
-
-struct {
-    // El cuerpo estarA formado por una cola de coordenadas
-    struct queue cuerpo;
-
-    // La direcciOn es un entero 0 - 3
-    int8_t direccion;
-
-    // Imagenes partes serpiete
-    BITMAP * img_cabeza;
-    BITMAP * img_cuerpo;
-    BITMAP * img_cola;
-    BITMAP * img_giro;
-    BITMAP * img_choque;
-} Serpiente;
-
-struct {
-    // Booleanod para saber si hay comida en el mapa o hay que generarla
-    // (a fin de cuentas solo aparece una a la vez)
-    bool existe;
-
-    // PosiciOn en que dibujar la comida
-    struct coordenada posicion;
-
-    // Imagen comida
-    BITMAP * imagen;
-} Comida;
-
-// Cuenta el nUmero de ciclos de juego que se han
-// ejecutado desde el inicio
-uint_fast32_t contador_repeticiones;
-
-uint32_t puntuacion;
-
-bool perdido;
-
-void cargarRecursos(struct juego * j);
-
-
-char ocupado[COLUMNAS][FILAS];
-
-
-int color_fondo;
-
-static long contadorTiempo;
+void cargarRecursos(void);
 
 void jugar(void);
     // Se divide en :
-    void desplegarImagen(struct juego * j);
-    void interaccionUsuario(struct juego * j);
-    void calculos(struct juego * j);
+    void desplegarImagen(void);
+    void interaccionUsuario();
+    void calculos(void);
 
 bool direccion_opuesta(int dir1, int dir2);
 bool misma_direccion(int dir1, int dir2);
 bool direccion_opuesta(int32_t dir1, int32_t dir2);
 bool misma_direccion(int32_t dir1, int32_t dir2);
-bool terminoDescanso(void);
+static int calcularRotacion(Coor * anterior, Coor * actual, Coor * siguiente);
 void pausa(void);
 static inline bool salir(void);
 
 int main(int argc, char ** argv) {
 
-    jugar(malloc(sizeof(struct juego)));
+    jugar();
 
     return 0;
 }
 
-void cargarRecursos(struct juego * j) {
-    // Imagenes
-    j->mapa.imagen = create_bitmap(COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE);
-
-    j->snake.img_cabeza = load_bitmap("img/snake_head.bmp", NULL);
-    j->snake.img_cuerpo = load_bitmap("img/snake_body.bmp", NULL);
-    j->snake.img_cola   = load_bitmap("img/snake_tail.bmp", NULL);
-    j->snake.img_giro   = load_bitmap("img/snake_turn.bmp", NULL);
-    j->snake.img_choque = load_bitmap("img/explosion.bmp", NULL);
-
-    j->comida.imagen  = load_bitmap("img/manzana.bmp", NULL);
-    j->mapa.img_muro  = load_bitmap("img/muro.bmp", NULL);
-    // Audios
+void cargarRecursos(void) {
+    cargarImagenes();
+    cargarAudios();
 }
 
 
-void prepararJuego(struct juego * j) {
+void prepararJuego() {
     srand(time(NULL));
 
-    j->mapa.color_fondo = 0x4B0D73;
-
-    for(int x = 0; x < j->mapa.ancho; x++) {
-        for(int y = 0; y < j->mapa.alto; y++) {
-            j->mapa.ocupado[x][y] = (x % (j->mapa.ancho-1)
-                    && y % (j->mapa.alto-1)) ?
+    for (int x = 0; x < FILAS; x++) {
+        for (int y = 0; y < COLUMNAS; y++) {
+            mapa.ocupado[x][y] = (x % (COLUMNAS - 1) && y % (FILAS - 1)) ?
                     '\0' : 'X';
-#ifndef NDEBUG
-            putchar(ocupado[i][j]? ocupado[i][j] : ' ');
-#endif
+            MESSAGE("%c", mapa.ocupado[x][y]? mapa.ocupado[x][y] : ' ');
         }
-#ifndef NDEBUG
-        putchar('\n');
-#endif
+        MESSAGE("\n");
     }
 
     crearSerpiente();
+    serpiente.proximas_direcciones = new_queue();
 
     inicializarAllegro();
-    cargarRecursos(j);
+    cargarRecursos();
 
     activarMusicaFondo();
 
 }
 
-void jugar(struct juego * j){
+void jugar() {
     // Preambulo
     prepararJuego();
     cargarAudios();
 
-    desplegarImagen(j);
+    desplegarImagen();
 
     textout_ex(screen, font, "Snake game: presiona una tecla para comenzar", 100, 100, 0x0, -1);
 
     readkey();
 
     // Juego
-    while( !j->perdido && !salir) {
+    while ( !juego.perdido && !salir()) {
 
-        desplegarImagen(j);
+        desplegarImagen();
 
-        interaccionUsuario(j);
+        interaccionUsuario();
 
-        calculos(j);
+        if (!(juego.contador % ACTUALIZACIONES[juego.velocidad])) calculos();
 
         rest(10); // Descanso para el cpu
+        juego.contador++;
     }
 
     desplegarImagen();
-    play_sample(muerte, 1000, 500, 1000, 0);
-    dormir(500);
+    play_sample(smp_muerte, 1000, 500, 1000, 0);
+    rest(500);
 
 }
 
-void desplegarImagen(struct juego * j) {
-    struct nodo * aux;
-    struct coordenada *actual, *ant, *sig;
-    BITMAP * sprite = create_bitmap(40, 40);
-    BITMAP * sprite2 = create_bitmap(40, 40);
+void desplegarImagen(void) {
+    SerpNodo *aux;
+    Coor *actual, *ant, *sig;
+    BITMAP *sprite = create_bitmap(40, 40);
 
-    int x, y;
-    int rotate;
-    clear_to_color(j->mapa.imagen, j->mapa.color_fondo);
-    clear_to_color(sprite, j->mapa.color_fondo);
-
-    int32_t i, j;
+    int32_t x, y;
     int32_t rotate;
-    clear_to_color(mapa, color_fondo);
-    clear_to_color(sprite, color_fondo);
+    clear_to_color(bmp_mapa, COLOR_FONDO);
+    clear_to_color(sprite, COLOR_FONDO);
 
-    for(y = 0; y < j->mapa.ancho; ++y) {
-        draw_sprite(mapa, muro, y * TAM_BLOQUE, 0);
-        draw_sprite(mapa, muro, y * TAM_BLOQUE, (FILAS - 1) * TAM_BLOQUE);
+    for (y = 0; y < COLUMNAS; ++y) {
+        draw_sprite(bmp_mapa, bmp_muro, y * TAM_BLOQUE, 0);
+        draw_sprite(bmp_mapa, bmp_muro, y * TAM_BLOQUE, (FILAS - 1) * TAM_BLOQUE);
     }
 
-    for(i = 1; i < j->mapa.alto - 1; ++i) {
-        draw_sprite(mapa, muro, 0, i * TAM_BLOQUE);
-        draw_sprite(mapa, muro, (COLUMNAS - 1) * TAM_BLOQUE, i * TAM_BLOQUE);
+    for (x = 1; x < FILAS - 1; ++x) {
+        draw_sprite(bmp_mapa, bmp_muro, 0, x * TAM_BLOQUE);
+        draw_sprite(bmp_mapa, bmp_muro, (COLUMNAS - 1) * TAM_BLOQUE, x * TAM_BLOQUE);
     }
 
-    if( hayComida ) {
-        draw_sprite(mapa, comida,
-                coordenadaComida.x * TAM_BLOQUE,
-                coordenadaComida.y * TAM_BLOQUE);
+    if ( comida.existe ) {
+        draw_sprite(bmp_mapa, bmp_comida,
+                comida.posicion.x * TAM_BLOQUE,
+                comida.posicion.y * TAM_BLOQUE);
     }
 
     aux = peek(true);
 
-    if( aux ) {
+    if ( aux ) {
         actual = filtrar(aux);
         sig = filtrar(aux->next);
 
+        MESSAGE("%d %d\n", sig->x, actual->x);
 
-        if( actual->x == sig->x + 1 )
-            rotate = 0;
-        else if( actual->y == sig->y + 1 )
-            rotate = 64;
-        else
-            rotate = 192;
+        rotate = calcularRotacion(NULL, actual, sig);
 
-#ifndef NDEBUG
-        printf("%d %d\n", sig->x, actual->x);
-#endif
+        rotate_sprite(sprite, bmp_serp_cola, 0, 0, itofix(rotate));
 
-        rotate_sprite(sprite, serp_cola, 0, 0, itofix(rotate));
-
-        draw_sprite(mapa, sprite,
+        draw_sprite(bmp_mapa, sprite,
                 actual->x * TAM_BLOQUE, actual->y * TAM_BLOQUE);
     }
 
-    while( (aux = peek(false)) ) {
-        clear_to_color(sprite, color_fondo);
+    while ( (aux = peek(false)) ) {
+        clear_to_color(sprite, COLOR_FONDO);
         actual = filtrar(aux);
         ant = filtrar(aux->prev);
 
-        if( aux->next ) {
+        if ( aux->next ) {
             sig = filtrar(aux->next);
 
-            if( ant->x == sig->x ) {
-                rotate = 64;
-                rotate_sprite(sprite, serp_cuerpo, 0, 0, itofix(rotate));
-            } else if( ant->y == sig->y ) {
-                rotate = 0;
-                rotate_sprite(sprite, serp_cuerpo, 0, 0, itofix(rotate));
-            } else {
-                if( ant->y == actual->y ) {
-                    if( ant->x > actual->x && actual->y > sig->y )
-                        rotate = 192;
-                    else if( ant->x > actual->x && actual->y < sig->y )
-                        rotate = 0;
-                    else if( actual->y > sig->y )
-                        rotate = 128;
-                    else
-                        rotate = 64;
-                } else {
-                    if( ant->y > actual->y && actual->x > sig->x )
-                        rotate = 64;
-                    else if( ant->y > actual->y && actual->x < sig->x )
-                        rotate = 0;
-                    else if( actual->x > sig->x )
-                        rotate = 128;
-                    else
-                        rotate = 192;
-                }
-                rotate_sprite(sprite, serp_giro, 0, 0, itofix(rotate));
-            }
+            rotate = calcularRotacion(ant, actual, sig);
+
+            rotate_sprite(sprite, rotate & 256 ? bmp_serp_giro : bmp_serp_cuerpo,
+                    0, 0, itofix(rotate));
         } else {
-            if( perdido ) {
-                Coor * aux = filtrar(serpiente->rear);
-                blit(mapa, sprite2, aux->x * TAM_BLOQUE, aux->y * TAM_BLOQUE, 0, 0, TAM_BLOQUE, TAM_BLOQUE);
-                x_lost = aux->x * TAM_BLOQUE;
-                y_lost = aux->y * TAM_BLOQUE;
+
+            rotate = calcularRotacion(ant, actual, NULL);
+
+            if (!juego.perdido) {
+                rotate_sprite(sprite, bmp_serp_cabeza, 0, 0, itofix(rotate));
+            } else {
+                Coor * pos_muerte = filtrar(serpiente.cuerpo->rear);
+                blit(bmp_mapa, sprite,
+                        pos_muerte->x * TAM_BLOQUE, pos_muerte->y * TAM_BLOQUE,
+                        0, 0, TAM_BLOQUE, TAM_BLOQUE);
+                rotate_sprite(sprite, bmp_explosion, 0, 0, itofix(rotate));
             }
-
-            if( ant->x == actual->x - 1 )
-                rotate = 128;
-            else if( ant->x == actual->x + 1 )
-                rotate = 0;
-            else if( ant->y  == actual->y - 1 )
-                rotate = 192;
-            else
-                rotate = 64;
-
-            if( perdido ) angle_lost = rotate;
-            rotate_sprite(sprite, serp_cabeza, 0, 0, itofix(rotate));
         }
-        draw_sprite(mapa, sprite,
+
+        draw_sprite(bmp_mapa, sprite,
                 actual->x * TAM_BLOQUE, actual->y * TAM_BLOQUE);
     }
 
-    if( perdido ) {
-        draw_sprite(mapa, sprite2, x_lost, y_lost);
-        rotate_sprite(sprite2, explosion, 0, 0, itofix(angle_lost));
-        draw_sprite(mapa, sprite2, x_lost, y_lost);
-    }
-
-    blit(mapa, screen, 0, 0, 0, 0, COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE);
-    draw_sprite(mapa, serp_cuerpo, actual->x, actual->y);
+    blit(bmp_mapa, screen, 0, 0, 0, 0, COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE);
+    draw_sprite(bmp_mapa, bmp_serp_cuerpo, actual->x, actual->y);
 
     destroy_bitmap(sprite);
-    destroy_bitmap(sprite2);
 }
 
-void interaccionUsuario(bool cambio) {
-    static struct queue * lista_direcciones;
+static int calcularRotacion(Coor * anterior, Coor * actual, Coor * siguiente) {
+    int angulo_rotacion; // 0-255
+
+    if (!anterior) {
+        if ( actual->x == (siguiente->x + 1) % COLUMNAS )
+            angulo_rotacion= 0;
+        else if ( actual->x == (siguiente->x - 1) % COLUMNAS )
+            angulo_rotacion = 128;
+        else if ( actual->y == (siguiente->y + 1) % FILAS )
+            angulo_rotacion = 64;
+        else
+            angulo_rotacion = 192;
+    } else if (siguiente) {
+        int delta_x[2] = { 0 };
+        int delta_y[2] = { 0 };
+
+        if ( anterior->x == (actual->x + 1) % COLUMNAS )
+            delta_x[0] = 1;
+        else if ( anterior->x == (actual->x - 1 + COLUMNAS) % COLUMNAS )
+            delta_x[0] = -1;
+        else if ( actual->x == (siguiente->x + 1) % COLUMNAS )
+            delta_x[1] = 1;
+        else if ( actual->x == (siguiente->x - 1 + COLUMNAS) % COLUMNAS )
+            delta_x[1] = -1;
+
+        if ( anterior->y == (actual->y + 1) % FILAS )
+            delta_y[0] = 1;
+        else if ( anterior->y == (actual->y - 1 + FILAS) % FILAS)
+            delta_y[0] = -1;
+        else if ( actual->y == (siguiente->y + 1) % FILAS )
+            delta_y[1] = 1;
+        else if ( actual->y == (siguiente->y - 1 + FILAS) % FILAS)
+            delta_y[1] = -1;
+
+        if ( !delta_x[0] && !delta_x[1] ) {
+            angulo_rotacion = 64;
+        } else if ( !delta_y[0] && !delta_y[1] ) {
+            angulo_rotacion = 0;
+        } else {
+            if ( !delta_y[0] ) {
+                if ( delta_x[0] == 1 && delta_y[1] == 1 )
+                    angulo_rotacion = 192;
+                else if ( delta_x[0] == 1 && delta_y[1] == -1 )
+                    angulo_rotacion = 0;
+                else if ( delta_y[1] == 1 )
+                    angulo_rotacion = 128;
+                else
+                    angulo_rotacion = 64;
+
+            } else {
+                if ( delta_y[0] == 1 && delta_x[1] == 1 )
+                    angulo_rotacion = 64;
+                else if ( delta_y[0] == 1 && delta_x[1] == -1 )
+                    angulo_rotacion = 0;
+                else if ( delta_x[1] == 1 )
+                    angulo_rotacion = 128;
+                else
+                    angulo_rotacion = 192;
+            }
+
+            angulo_rotacion += 256;
+        }
+    } else {
+        if ( anterior->x == (actual->x - 1 + COLUMNAS) % COLUMNAS )
+            angulo_rotacion = 128;
+        else if ( anterior->x == (actual->x + 1) % COLUMNAS )
+            angulo_rotacion = 0;
+        else if ( anterior->y  == (actual->y - 1 + FILAS) % FILAS )
+            angulo_rotacion = 192;
+        else
+            angulo_rotacion = 64;
+    }
+
+
+    return angulo_rotacion;
+}
+
+void interaccionUsuario() {
     static int32_t presionado = 1, ultimo = 1;
 
-    if( !lista_direcciones ) lista_direcciones = new_queue();
+    if      ( key[KEY_LEFT]  || key[KEY_A] ) presionado = 0;
+    else if ( key[KEY_RIGHT] || key[KEY_D] ) presionado = 1;
+    else if ( key[KEY_UP]    || key[KEY_W] ) presionado = 2;
+    else if ( key[KEY_DOWN]  || key[KEY_S] ) presionado = 3;
+    else if ( key[KEY_P] ) pausa();
 
-    if     ( key[KEY_LEFT]  || key[KEY_A] ) presionado = 0;
-    else if( key[KEY_RIGHT] || key[KEY_D] ) presionado = 1;
-    else if( key[KEY_UP]    || key[KEY_W] ) presionado = 2;
-    else if( key[KEY_DOWN]  || key[KEY_S] ) presionado = 3;
-    else if( key[KEY_P] ) pausa();
-
-    if( !misma_direccion(presionado, ultimo)
-        && !direccion_opuesta(presionado, ultimo) ) {
+    if ( !misma_direccion(presionado, ultimo) &&
+        !direccion_opuesta(presionado, ultimo) ) {
         int32_t direction = ultimo = presionado;
 
-        en_queue(lista_direcciones, new_dir(direction));
+        en_queue(serpiente.proximas_direcciones, new_dir(direction));
     }
 
-    if( terminoDescanso() && !queue_is_empty(lista_direcciones) ) {
-        struct node * aux = de_queue(lista_direcciones);
-        dir = ptr_to_int(aux->data);
-    }
 }
 
 void calculos(void) {
 
     SerpNodo * movil;
     char lugar;
-    Coor * aux = filtrar(serpiente->rear), * aux2;
+    Coor * aux = filtrar(serpiente.cuerpo->rear), * aux2;
     Coor nuevaCoord = *aux;
 
-    if( terminoDescanso() ) {
-        contadorTiempo = clock();
-    } else {
-        return;
+    if ( !queue_is_empty(serpiente.proximas_direcciones) ) {
+        struct node * aux = de_queue(serpiente.proximas_direcciones);
+        serpiente.direccion = ptr_to_int(aux->data);
+        free(aux);
     }
 
-    if( rand() % 10 == 0 ) {
-        play_sample(movimiento, 1000, 150, 1000, 0);
+    if ( rand() % 50 == 0 ) {
+        play_sample(smp_movimiento, 1000, 150, 1000, 0);
     }
 
-
-    if( !hayComida ) {
+    if ( !comida.existe ) {
         do {
-            coordenadaComida.x = 1 + rand() % (COLUMNAS - 2);
-            coordenadaComida.y = 1 + rand() % (FILAS - 2);
-        } while( ocupado[coordenadaComida.x][coordenadaComida.y] );
+            comida.posicion.x = 1 + rand() % (COLUMNAS - 2);
+            comida.posicion.y = 1 + rand() % (FILAS - 2);
+        } while( mapa.ocupado[comida.posicion.x][comida.posicion.y] );
 
-        ocupado[coordenadaComida.x][coordenadaComida.y] = 'o';
-        hayComida = true;
+        mapa.ocupado[comida.posicion.x][comida.posicion.y] = 'o';
+        comida.existe = true;
     }
 
-    if( dir == 0 ) {
+    if ( serpiente.direccion == IZQUIERDA )
         nuevaCoord.x--;
-    } else if( dir == 1 ) {
+    else if ( serpiente.direccion == DERECHA )
         nuevaCoord.x++;
-    } else if( dir == 2 ) {
+    else if ( serpiente.direccion == ARRIBA )
         nuevaCoord.y--;
-    } else {
+    else
         nuevaCoord.y++;
-    }
 
-#ifndef NDEBUG
-    printf("%d %dA\n", nuevaCoord.x, nuevaCoord.y);
-    printf("%d %dA\n", aux->x, aux->y);
-    /*getchar();*/
-#endif
+    MESSAGE("%d %dA\n", nuevaCoord.x, nuevaCoord.y);
+    MESSAGE("%d %dA\n", aux->x, aux->y);
 
-    lugar = ocupado[nuevaCoord.x][nuevaCoord.y];
+    lugar = mapa.ocupado[nuevaCoord.x][nuevaCoord.y];
 
-#ifndef NDEBUG
-    printf("lugar %c %d\n", lugar, lugar);
-#endif
+    MESSAGE("lugar %c %d\n", lugar, lugar);
 
-    if( lugar != '\0' && lugar != 'o') {
+    if ( lugar != '\0' && lugar != 'o') {
         aux2 = filtrar(peek(true));
-        if( (aux2->x != nuevaCoord.x) || (aux2->y != nuevaCoord.y) ) {
-#ifndef NDEBUG
-            printf("HE perdido\n");
-#endif
-            perdido = true;
+        if ( (aux2->x != nuevaCoord.x) || (aux2->y != nuevaCoord.y) ) {
+
+            MESSAGE("HE perdido\n");
+
+            juego.perdido = true;
         }
 
         movil = sacar();
-    } else if( lugar == 'o') {
-        ocupado[nuevaCoord.x][nuevaCoord.y] = '\0';
-        hayComida = false;
-#ifndef NDEBUG
-        printf("He comido\n");
-#endif
+    } else if ( lugar == 'o') {
+        mapa.ocupado[nuevaCoord.x][nuevaCoord.y] = '\0';
+        comida.existe = false;
+
+        MESSAGE("He comido\n");
+
         movil = new_node(malloc(sizeof(Coor)));
-        play_sample(mordida, 50, 250, 1000, 0);
+        play_sample(smp_mordida, 50, 250, 1000, 0);
     } else {
-#ifndef NDEBUG
-        printf("He movido\n");
-#endif
+
+        MESSAGE("Me he movido\n");
+
         movil = sacar();
     }
 
     aux2 = filtrar(movil);
-    aux2->x = nuevaCoord.x;
-    aux2->y = nuevaCoord.y;
+    *aux2 = nuevaCoord;
 
     insertar(movil);
-}
 
-void dormir(int milis) {
-    rest(milis);
 }
 
 bool misma_direccion(int32_t dir1, int32_t dir2) {
@@ -408,7 +338,7 @@ bool misma_direccion(int32_t dir1, int32_t dir2) {
 bool direccion_opuesta(int32_t dir1, int32_t dir2) {
     int8_t opuesta[4] = { 1, 0, 3, 2 };
 
-    if( dir1 >= 0 && dir1 < 4 ) {
+    if ( dir1 >= 0 && dir1 < 4 ) {
         return opuesta[dir1] == dir2;
     }
 
@@ -417,7 +347,7 @@ bool direccion_opuesta(int32_t dir1, int32_t dir2) {
 
 void pausa(void) {
     textout_ex(screen, font, "Se ha pausado el juego, presiona C para continuar", 100, 100, 0x000000, -1);
-    while( !key[KEY_C] ) dormir(10);
+    while ( !key[KEY_C] ) rest(10);
 }
 
 static inline bool salir(void) { return key[KEY_ESC]; }
@@ -425,20 +355,25 @@ static inline bool salir(void) { return key[KEY_ESC]; }
 void liberarMemoria(void) {
     struct node * aux;
 
-    while( (aux = de_queue(serpiente)) ) {
+    while ( (aux = de_queue(serpiente.cuerpo)) ) {
         free(aux);
     }
-    free(serpiente);
 
-    destroy_bitmap(mapa);
-    destroy_bitmap(serp_cabeza);
-    destroy_bitmap(serp_cuerpo);
-    destroy_bitmap(serp_cola);
-    destroy_bitmap(serp_giro);
-    destroy_bitmap(comida);
-    destroy_bitmap(muro);
-    destroy_bitmap(explosion);
-    destroy_bitmap(screen);
+    while ( (aux = de_queue(serpiente.proximas_direcciones)) ) {
+        free(aux);
+    }
+
+    free(serpiente.cuerpo);
+    free(serpiente.proximas_direcciones);
+
+    destroy_bitmap(bmp_mapa);
+    destroy_bitmap(bmp_serp_cabeza);
+    destroy_bitmap(bmp_serp_cuerpo);
+    destroy_bitmap(bmp_serp_cola);
+    destroy_bitmap(bmp_serp_giro);
+    destroy_bitmap(bmp_comida);
+    destroy_bitmap(bmp_muro);
+    destroy_bitmap(bmp_explosion);
 
     release_screen();
 }

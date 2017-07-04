@@ -2,33 +2,36 @@
 #include "recursos.h"
 #include "init_allegro.h"
 
-#define FILAS       15
-#define COLUMNAS    15
+/* Variables de juego */
+struct Serpiente serpiente = { NULL, DERECHA, NULL };
+struct Comida comida = { false, { -1, -1 } };
+struct Juego juego = { 0, 0, 4, false };
+struct Mapa mapa = { FILAS * TAM_BLOQUE, COLUMNAS * TAM_BLOQUE };
 
+const int8_t ACTUALIZACIONES[10] = { 30, 22, 16, 12, 10, 8, 6, 5, 4, 3 };
+/* Funciones de utileria */
 
 void inicializarAllegro(void) {
-    init_allegro("Snake game",
-            COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE,
-            70, 70);
+    init_allegro("Snake game", mapa.ancho, mapa.alto, 70, 70);
 }
 
 void cargarImagenes(void) {
-    mapa = create_bitmap(COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE);
+    bmp_mapa = create_bitmap(COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE);
 
-    serp_cabeza = load_bitmap("img/snake_head.bmp", NULL);
-    serp_cuerpo = load_bitmap("img/snake_body.bmp", NULL);
-    serp_cola   = load_bitmap("img/snake_tail.bmp", NULL);
-    serp_giro   = load_bitmap("img/snake_turn.bmp", NULL);
-    comida      = load_bitmap("img/manzana.bmp", NULL);
-    muro        = load_bitmap("img/muro.bmp", NULL);
-    explosion   = load_bitmap("img/explosion.bmp", NULL);
+    bmp_serp_cabeza = load_bitmap("img/snake_head.bmp", NULL);
+    bmp_serp_cuerpo = load_bitmap("img/snake_body.bmp", NULL);
+    bmp_serp_cola   = load_bitmap("img/snake_tail.bmp", NULL);
+    bmp_serp_giro   = load_bitmap("img/snake_turn.bmp", NULL);
+    bmp_comida      = load_bitmap("img/manzana.bmp", NULL);
+    bmp_muro        = load_bitmap("img/muro.bmp", NULL);
+    bmp_explosion   = load_bitmap("img/explosion.bmp", NULL);
 
 }
 
 void cargarAudios(void) {
-    muerte = load_wav("sound/muerte.wav");
-    mordida = load_wav("sound/croc_chomp_x.wav");
-    movimiento = load_wav("sound/rattlesnake3.wav");
+    smp_muerte = load_wav("sound/muerte.wav");
+    smp_mordida = load_wav("sound/croc_chomp_x.wav");
+    smp_movimiento = load_wav("sound/rattlesnake3.wav");
 }
 
 void activarMusicaFondo(void) {
@@ -38,7 +41,7 @@ void activarMusicaFondo(void) {
 void crearSerpiente() {
     Coor * aux;
 
-    serpiente = new_queue();
+    serpiente.cuerpo = new_queue();
 
     aux = (Coor *) malloc(3 * sizeof(Coor));
 
@@ -55,27 +58,25 @@ void crearSerpiente() {
 bool insertar(SerpNodo * n) {
     Coor * aux = ((Coor *)n->data);
 
-#ifndef NDEBUG
-    printf("Ingreso %d %d\n", aux->x, aux->y);
-#endif
+    MESSAGE("Ingreso %d %d\n", aux->x, aux->y);
 
-    ocupado[aux->x][aux->y] = 'S';
-    return en_queue(serpiente, n);
+    mapa.ocupado[aux->x][aux->y] = 'S';
+    return en_queue(serpiente.cuerpo, n);
 }
 
 SerpNodo * sacar(void) {
-    SerpNodo * aux = de_queue(serpiente);
+    SerpNodo * aux = de_queue(serpiente.cuerpo);
 
     if( aux ) {
         Coor * p = ((Coor *)aux->data);
-        ocupado[p->x][p->y] = '\0';
+        mapa.ocupado[p->x][p->y] = '\0';
     }
 
     return aux;
 }
 
 SerpNodo * peek(bool reiniciar) {
-    return queue_peek(serpiente, reiniciar);
+    return queue_peek(serpiente.cuerpo, reiniciar);
 }
 
 Coor * filtrar(SerpNodo * n) {

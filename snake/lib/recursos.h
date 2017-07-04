@@ -23,7 +23,6 @@
 #endif
 
 typedef struct node SerpNodo;
-typedef struct queue Serp;
 
 #define MILI CLOCKS_PER_SEC / 1000
 
@@ -33,36 +32,72 @@ typedef struct queue Serp;
 #define COLUMNAS 15
 #define FILAS    15
 
-#define new_dir() new_node(malloc(sizeof(int)));
+#define COLOR_FONDO 0x4B9D73
+
+typedef enum { IZQUIERDA, DERECHA, ARRIBA, ABAJO } Dir;
 
 typedef struct {
-    int x;
-    int y;
+    int16_t x;
+    int16_t y;
 } Coor;
+
+struct Serpiente {
+    struct queue * cuerpo;
+    Dir direccion;
+
+    // La lista de las direcciones que tendrA la respuesta a futuro
+    struct queue * proximas_direcciones;
+};
+
+struct Comida {
+    bool existe;
+    Coor posicion;
+};
+
+struct Juego {
+    uint_fast32_t contador;
+    uint32_t puntuacion;
+    uint32_t velocidad;
+    bool perdido;
+};
+
+struct Mapa {
+    uint16_t alto;
+    uint16_t ancho;
+
+    char ocupado[FILAS][COLUMNAS];
+};
 
 #define new_dir(d) new_node(int_to_ptr(d))
 
 /* Escenario */
-BITMAP * mapa;
+BITMAP * bmp_mapa;
 
 /* Partes serpiete */
-BITMAP * serp_cabeza;
-BITMAP * serp_cuerpo;
-BITMAP * serp_cola;
-BITMAP * serp_giro;
+BITMAP * bmp_serp_cabeza;
+BITMAP * bmp_serp_cuerpo;
+BITMAP * bmp_serp_cola;
+BITMAP * bmp_serp_giro;
 
 /* Otras imagenes */
-BITMAP * comida;
-BITMAP * muro;
-BITMAP * explosion;
+BITMAP * bmp_comida;
+BITMAP * bmp_muro;
+BITMAP * bmp_explosion;
 
 /* Somidos */
-SAMPLE * muerte;
-SAMPLE * mordida;
-SAMPLE * movimiento;
+SAMPLE * smp_muerte;
+SAMPLE * smp_mordida;
+SAMPLE * smp_movimiento;
 
 /* Estado del juego */
 
+extern struct Serpiente serpiente;
+extern struct Juego juego;
+extern struct Comida comida;
+extern struct Mapa mapa;
+const int8_t ACTUALIZACIONES[10];
+
+/* Funciones */
 void inicializarAllegro(void);
 
 void cargarImagenes(void);
