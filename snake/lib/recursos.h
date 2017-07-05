@@ -24,15 +24,15 @@
 
 typedef struct node SerpNodo;
 
-#define MILI CLOCKS_PER_SEC / 1000
-
 /* Espacio de juego */
 #define TAM_BLOQUE 40
 
-#define COLUMNAS 15
+#define COLUMNAS 16
 #define FILAS    15
 
 #define COLOR_FONDO 0x4B9D73
+
+#define NUM_ESCENARIOS 7
 
 typedef enum { IZQUIERDA, DERECHA, ARRIBA, ABAJO } Dir;
 
@@ -58,20 +58,29 @@ struct Juego {
     uint_fast32_t contador;
     uint32_t puntuacion;
     uint32_t velocidad;
+
     bool perdido;
+    bool ganado;
 };
 
 struct Mapa {
-    uint16_t alto;
     uint16_t ancho;
+    uint16_t alto;
+    uint32_t lugares_disponibles;
 
-    char ocupado[FILAS][COLUMNAS];
+    char (*ocupado)[FILAS];
+};
+
+struct Escenario {
+    uint32_t lugares_disponibles;
+    char mapa[COLUMNAS][FILAS];
 };
 
 #define new_dir(d) new_node(int_to_ptr(d))
 
 /* Escenario */
 BITMAP * bmp_mapa;
+BITMAP * bmp_portada;
 
 /* Partes serpiete */
 BITMAP * bmp_serp_cabeza;
@@ -85,6 +94,7 @@ BITMAP * bmp_muro;
 BITMAP * bmp_explosion;
 
 /* Somidos */
+SAMPLE * smp_intro;
 SAMPLE * smp_muerte;
 SAMPLE * smp_mordida;
 SAMPLE * smp_movimiento;
@@ -95,13 +105,18 @@ extern struct Serpiente serpiente;
 extern struct Juego juego;
 extern struct Comida comida;
 extern struct Mapa mapa;
+extern struct Escenario escenario[NUM_ESCENARIOS];
 const int8_t ACTUALIZACIONES[10];
 
 /* Funciones */
-void inicializarAllegro(void);
+void inicializarAllegro(void (*funcion_cierre)());
 
 void cargarImagenes(void);
 void cargarAudios(void);
+void cargarEscenarios(void);
+
+void destruirImagenes(void);
+void destruirAudios(void);
 
 void activarMusicaFondo(void);
 

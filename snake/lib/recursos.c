@@ -5,19 +5,25 @@
 /* Variables de juego */
 struct Serpiente serpiente = { NULL, DERECHA, NULL };
 struct Comida comida = { false, { -1, -1 } };
-struct Juego juego = { 0, 0, 4, false };
-struct Mapa mapa = { FILAS * TAM_BLOQUE, COLUMNAS * TAM_BLOQUE };
+struct Juego juego = { 0, 0, 3, false, false };
+struct Mapa mapa = { COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE , FILAS * COLUMNAS };
+
+struct Escenario escenario[NUM_ESCENARIOS];
 
 const int8_t ACTUALIZACIONES[10] = { 30, 22, 16, 12, 10, 8, 6, 5, 4, 3 };
 /* Funciones de utileria */
 
-void inicializarAllegro(void) {
+void inicializarAllegro(void (*funcion_cierre)()) {
     init_allegro("Snake game", mapa.ancho, mapa.alto, 70, 70);
+
+    LOCK_FUNCTION(funcion_cierre);
+    set_close_button_callback(funcion_cierre);
 }
 
 void cargarImagenes(void) {
-    bmp_mapa = create_bitmap(COLUMNAS * TAM_BLOQUE, FILAS * TAM_BLOQUE);
+    bmp_mapa = create_bitmap(mapa.ancho, mapa.alto);
 
+    bmp_portada     = load_bitmap("img/portada_juego.bmp", NULL);
     bmp_serp_cabeza = load_bitmap("img/snake_head.bmp", NULL);
     bmp_serp_cuerpo = load_bitmap("img/snake_body.bmp", NULL);
     bmp_serp_cola   = load_bitmap("img/snake_tail.bmp", NULL);
@@ -25,13 +31,62 @@ void cargarImagenes(void) {
     bmp_comida      = load_bitmap("img/manzana.bmp", NULL);
     bmp_muro        = load_bitmap("img/muro.bmp", NULL);
     bmp_explosion   = load_bitmap("img/explosion.bmp", NULL);
+}
 
+void destruirImagenes(void) {
+    destroy_bitmap(bmp_mapa);
+
+    destroy_bitmap(bmp_portada);
+    destroy_bitmap(bmp_serp_cabeza);
+    destroy_bitmap(bmp_serp_cuerpo);
+    destroy_bitmap(bmp_serp_cola);
+    destroy_bitmap(bmp_serp_giro);
+    destroy_bitmap(bmp_comida);
+    destroy_bitmap(bmp_muro);
+    destroy_bitmap(bmp_explosion);
 }
 
 void cargarAudios(void) {
-    smp_muerte = load_wav("sound/muerte.wav");
-    smp_mordida = load_wav("sound/croc_chomp_x.wav");
+    smp_intro      = load_wav("sound/intro.wav");
+    smp_muerte     = load_wav("sound/muerte.wav");
+    smp_mordida    = load_wav("sound/croc_chomp_x.wav");
     smp_movimiento = load_wav("sound/rattlesnake3.wav");
+}
+
+void destruirAudios(void) {
+    destroy_sample(smp_intro);
+    destroy_sample(smp_muerte);
+    destroy_sample(smp_mordida);
+    destroy_sample(smp_movimiento);
+}
+
+void cargarEscenarios(void) {
+    char buffer[COLUMNAS + 1];
+    char nom_archivo[20];
+    FILE *ap_archivo;
+
+    MESSAGE("Preparando la carga de los escenarios\n");
+
+    for (int i = 0 ; i < NUM_ESCENARIOS; i++) {
+        sprintf(nom_archivo, "maps/map%d.dat", i);
+        ap_archivo = fopen(nom_archivo, "r");
+        escenario[i].lugares_disponibles = FILAS * COLUMNAS;
+
+        for (int j = 0; j < FILAS; j++) {
+            fscanf(ap_archivo, "%[^\n]\n", buffer);
+
+            MESSAGE("j: %d %s\n", j, buffer);
+
+            for (int k = 0; k < COLUMNAS; k++) {
+                if (buffer[k] == 'X') {
+                    escenario[i].mapa[k][j] = buffer[k] == 'X' ? 'X' : '\0';
+                    escenario[i].lugares_disponibles--;
+                }
+            }
+        }
+
+        fclose(ap_archivo);
+    }
 }
 
 void activarMusicaFondo(void) {
@@ -60,7 +115,8 @@ bool insertar(SerpNodo * n) {
 
     MESSAGE("Ingreso %d %d\n", aux->x, aux->y);
 
-    mapa.ocupado[aux->x][aux->y] = 'S';
+    if (!mapa.ocupado[aux->x][aux->y])
+        mapa.ocupado[aux->x][aux->y] = 'S';
     return en_queue(serpiente.cuerpo, n);
 }
 

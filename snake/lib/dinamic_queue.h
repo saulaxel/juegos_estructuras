@@ -18,6 +18,8 @@
 #ifndef _DINAMIC_QUEUE_H
 #define _DINAMIC_QUEUE_H
 
+#include <stdint.h>
+
 /*-*-*-*-*-*-*-*-*-*-*
  - Data definitions  -
  *-*-*-*-*-*-*-*-*-*-*/
