@@ -1,2 +1,4 @@
 # juegos_estructuras
-Un par de juegos hechos a base de estructuras de datos
+A couple of games made using data structures.
+These games are for educational purposes, if they are fun too
+it's just a secondary addition.
